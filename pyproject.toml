@@ -1,0 +1,19 @@
+[project]
+name = "call-me-meybe"
+version = "0.1.0"
+description = "Function calling with constrained decoding"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "pydantic",
+    "numpy",
+    "torch",
+    "transformers",
+    "huggingface-hub",
+]
+
+[dependency-groups]
+dev = [
+    "flake8",
+    "mypy",
+]
