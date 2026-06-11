@@ -20,8 +20,7 @@
 
 import json
 from collections.abc import Callable, Sequence
-
-import numpy as np
+import torch
 
 from llm_sdk.llm_sdk import Small_LLM_Model
 from src.llm_client import decode_token_ids, encode_text, get_next_logits
@@ -31,32 +30,25 @@ PrefixValidator = Callable[[str], bool]
 StopValidator = Callable[[str], bool]
 """واش النص كمل وخصنا نوقفو؟"""
 
-def top_k_token_ids_by_score(
-        logits: Sequence[float],
-        k: int,
-) -> list[int]:
-    """return the top k token ids ordered from highest logit score to lowest"""
+def ordered_token_ids_by_score(logits: Sequence[float]) -> list[int]:
+    """order token ids from highest logit score to lowest"""
 
     if not logits:
         raise ValueError("cannot order empty logits")
-
-    arr = np.asarray(logits)
-    k = min(k, len(arr))
-    top_k_indices = np.argpartition(-arr, k)[:k]
-    top_k_sorted = top_k_indices[np.argsort(-arr[top_k_indices])]
-    return [int(x) for x in top_k_sorted]
+    
+    logits_tensor = torch.tensor(logits)
+    sorted_indices = torch.argsort(logits_tensor, descending=True)
+    sorted_list: list[int] = sorted_indices.tolist()
+    return sorted_list
 
 def find_best_valid_token(
         model: Small_LLM_Model,
         context_ids: list[int],
         generated_ids: list[int],
         prefix_validator: PrefixValidator,
-        max_candidates: int | None = 100,
-) -> tuple[int, str]:
-    """find the highest scoring token that keeps the output valid
-
-    returns the token id and the decoded candidate text
-    """
+        max_candidates: int | None = None,
+) -> int:
+    """find the highest scoring token that keeps the output valid"""
     
     """جيب logits
     رتب tokens
@@ -67,16 +59,19 @@ def find_best_valid_token(
     إلا كلشي غلط raise error
     """
 
-    logits = get_next_logits(model, context_ids)
-    actual_max_candidates = max_candidates if max_candidates is not None else 100
-    token_ids = top_k_token_ids_by_score(logits, k=actual_max_candidates)
+    logits_list = get_next_logits(model, context_ids)
+    logits_tensor = torch.tensor(logits_list)
+    sorted_indices = torch.argsort(logits_tensor, descending=True)
+    
+    max_candidates_val = max_candidates if max_candidates is not None else 100
+    token_ids: list[int] = sorted_indices[:max_candidates_val].tolist()
     
     for token_id in token_ids:
         candidate_ids = generated_ids + [token_id]
         candidate_text = decode_token_ids(model, candidate_ids)
 
         if prefix_validator(candidate_text):
-            return token_id, candidate_text
+            return token_id
     
     raise RuntimeError("no valid next token found during constrained decoding")
 
@@ -87,27 +82,63 @@ def constrained_decode(
         stop_validator: StopValidator,
         max_new_tokens: int = 256,
         max_candidates: int | None = None,
+        user_prompt: str | None = None,
 ) -> str:
     """generate txte while respecting a prefix constraint"""
     prompt_ids = encode_text(model, prompt)
-    generated_ids: list[int] = []
+    
+    # Optional smart pre-filling of JSON prefix structure to bypass prompt/key generation redundancy
+    if user_prompt is not None:
+        prefix = f'{{\n  "prompt": {json.dumps(user_prompt)},\n  "name": "'
+        prefilled_ids = encode_text(model, prefix)
+        generated_ids = list(prefilled_ids)
+        full_input_ids = prompt_ids + prefilled_ids
+    else:
+        generated_ids = []
+        full_input_ids = prompt_ids
+
+    # Run the first model pass over the full initial context (including prefilled prefix if present)
+    input_tensor = torch.tensor([full_input_ids], device=model._device, dtype=torch.long)
+    with torch.no_grad():
+        outputs = model._model(input_ids=input_tensor, use_cache=True)
+        past_key_values = outputs.past_key_values
+        logits = outputs.logits[0, -1]
+        
+    max_candidates_val = max_candidates if max_candidates is not None else 100
 
     for _step in range(max_new_tokens):
-        context_ids = prompt_ids + generated_ids
-
-        next_token_id, generated_text = find_best_valid_token(
-            model=model,
-            context_ids=context_ids,
-            generated_ids=generated_ids,
-            prefix_validator=prefix_validator,
-            max_candidates=max_candidates,
-        )
-
-        generated_ids.append(next_token_id)
-
+        # Retrieve the sorted candidate token ids using fast PyTorch sorting
+        sorted_indices = torch.argsort(logits, descending=True)
+        token_ids = sorted_indices[:max_candidates_val].tolist()
+        
+        found = False
+        next_token_id = -1
+        for token_id in token_ids:
+            candidate_ids = generated_ids + [token_id]
+            candidate_text = decode_token_ids(model, candidate_ids)
+            
+            if prefix_validator(candidate_text):
+                next_token_id = token_id
+                generated_ids.append(token_id)
+                found = True
+                break
+                
+        if not found:
+            raise RuntimeError("no valid next token found during constrained decoding")
+            
+        generated_text = decode_token_ids(model, generated_ids)
         if stop_validator(generated_text):
             return generated_text
+            
+        # Get logits for next token using KV cache to process only the single new token
+        next_input = torch.tensor([[next_token_id]], device=model._device, dtype=torch.long)
+        with torch.no_grad():
+            outputs = model._model(input_ids=next_input, past_key_values=past_key_values, use_cache=True)
+            past_key_values = outputs.past_key_values
+            logits = outputs.logits[0, -1]
+
     raise RuntimeError("constrained decoding reached the token limit.")
+
 
 def is_json_object_prefix(text: str) -> bool:
     """check whther text can still become a json object"""
@@ -149,12 +180,41 @@ def is_json_object_prefix(text: str) -> bool:
                 return False
     return True
 
+def fix_json_escapes(text: str) -> str:
+    """Escapes invalid backslashes in a JSON string so json.loads doesn't fail."""
+    result = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text[i] == '\\':
+            if i + 1 < n:
+                next_char = text[i+1]
+                if next_char in ['"', '\\', '/', 'b', 'f', 'n', 'r', 't']:
+                    result.append('\\')
+                    result.append(next_char)
+                    i += 2
+                    continue
+                elif next_char == 'u':
+                    if i + 5 < n and all(c in '0123456789abcdefABCDEF' for c in text[i+2:i+6]):
+                        result.append('\\')
+                        result.append('u')
+                        result.extend(text[i+2:i+6])
+                        i += 6
+                        continue
+            result.append('\\\\')
+            i += 1
+        else:
+            result.append(text[i])
+            i += 1
+    return "".join(result)
+
 def is_complete_json_object(text: str) -> bool:
     """check whether text is a complet json object"""
     try:
-        decoded = json.loads(text)
+        decoded = json.loads(fix_json_escapes(text))
     except json.JSONDecodeError:
         return False
     
     return isinstance(decoded, dict)
+
     

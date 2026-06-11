@@ -8,6 +8,7 @@ from src.constrained_decoder import (
     constrained_decode,
     is_complete_json_object,
     is_json_object_prefix,
+    fix_json_escapes,
 )
 
 from src.models import FunctionCallResult, FunctionDefinition
@@ -23,7 +24,7 @@ def parse_generated_json(text: str) -> dict[str, object]:
     """parse generated json text"""
 
     try:
-        data = json.loads(text)
+        data = json.loads(fix_json_escapes(text))
     except json.JSONDecodeError as exc:
         raise ValueError("generated text is not valid json") from exc
     
@@ -41,7 +42,7 @@ def validate_generated_object(
     required_keys = {"prompt", "name", "parameters"}
 
     if set(generated) != required_keys:
-        raise ValueError("generated onject has invalid keys")
+        raise ValueError("generated object has invalid keys")
     
     function_name = generated["name"]
     parameters = generated["parameters"]
@@ -79,7 +80,7 @@ def generate_function_call(
         prefix_validator=is_json_object_prefix,
         stop_validator=is_complete_json_object,
         max_new_tokens=max_new_tokens,
-        max_candidates=100,
+        user_prompt=prompt,
     )
 
     generated_object = parse_generated_json(generated_text)

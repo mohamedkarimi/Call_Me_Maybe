@@ -60,29 +60,6 @@ def build_function_call_schema(
         parameters_by_function=parameters_by_function,
         returns_by_function=returns_by_function,
     )
-
-def get_parameter_schema(
-        schema: FunctionCallSchema,
-        function_name: str,
-) -> dict[str, jsonType]:
-    """get expected parameters for a function name
-            هاد function كتجاوب على سؤال واحد:
-
-        هاد function شنو parameters خاصها؟
-
-        مثلاً:
-
-        get_parameter_schema(schema, "fn_greet")
-
-        ترجع:
-
-        {"name": "string"}
-    """
-    try:
-        return schema.parameters_by_function[function_name]
-    except KeyError as exc:
-        raise ValueError(f"unknown function name: {function_name}") from exc
-    
 def validate_function_name(
         schema: FunctionCallSchema,
         function_name: str,

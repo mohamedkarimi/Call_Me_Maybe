@@ -7,14 +7,7 @@ from llm_sdk.llm_sdk import Small_LLM_Model
 
 DEFAULT_MODEL_NAME = "Qwen/Qwen3-0.6B"
 
-def create_model(model_name: str = DEFAULT_MODEL_NAME) -> Small_LLM_Model:
-    """create the small llm model from the provided sdk"""
 
-    try:
-        return Small_LLM_Model(model_name=model_name)
-    except Exception as exc:
-        raise RuntimeError(f"could not initialize llm model: {exc}") from exc
-    
 def normalize_token_ids(raw_ids: object) -> list[int]:
     """convert sdk token ids into a plain list of integers
         had l function ghadi tkhli l code ykhdam swa sdk rja3 
@@ -70,19 +63,3 @@ def get_next_logits(
         raise RuntimeError("model returned an empty logits list")
     
     return logits
-
-def get_vocab_path(model: Small_LLM_Model) -> Path:
-    """return the sdk vocabulary file path"""
-
-    try:
-        return Path(model.get_path_to_vocab_file())
-    except Exception as exc:
-        raise RuntimeError(f"could not get vocabulary path: {exc}") from exc
-    
-def get_tokenizer_path(model: Small_LLM_Model) -> Path:
-    """return the sdk tokenizer file path"""
-
-    try:
-        return Path(model.get_path_to_tokenizer_file())
-    except Exception as exc:
-        raise RuntimeError(f"could not get tokenizer path: {exc}") from exc
