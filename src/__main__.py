@@ -10,6 +10,7 @@ DEFAULT_INPUT_PATH = Path("data/input/function_calling_tests.json")
 DEFAULT_FUNCTIONS_PATH = Path("data/input/functions_definition.json")
 DEFAULT_OUTPUT_PATH = Path("data/output/function_calling_results.json")
 
+
 def parse_args() -> argparse.Namespace:
     """parse command line argument"""
 
@@ -98,5 +99,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        print("\nGeneration interrupted by user.")
+        print("\nbn8")
         raise SystemExit(0)

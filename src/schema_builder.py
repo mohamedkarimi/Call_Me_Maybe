@@ -19,11 +19,9 @@ def extract_parameter_types(
         function: FunctionDefinition,
 ) -> dict[str, jsonType]:
     """extract parameter names and json types from a function definition
-        مثلاً إلا دخلات:
+    eg:
     fn_add_numbers(a: number, b: number)
-
-    غادي تخرج:  
-
+    the output:
     {"a": "number", "b": "number"}
     """
 

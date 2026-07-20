@@ -1,7 +1,7 @@
 """high level function call generation pipeline"""
 
 import json
-
+from typing import cast
 from llm_sdk.llm_sdk import Small_LLM_Model
 
 from src.constrained_decoder import (
@@ -107,4 +107,7 @@ def generate_function_call(
 
     validate_generated_object(schema, generated_object)
 
-    return FunctionCallResult.model_validate(generated_object)
+    return cast(
+        FunctionCallResult,
+        FunctionCallResult.model_validate(generated_object),
+    )

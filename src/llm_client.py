@@ -1,6 +1,5 @@
 """small wrapper function around the provided llm sdk."""
 
-from pathlib import Path
 from typing import Any, cast
 
 from llm_sdk.llm_sdk import Small_LLM_Model
@@ -10,7 +9,7 @@ DEFAULT_MODEL_NAME = "Qwen/Qwen3-0.6B"
 
 def normalize_token_ids(raw_ids: object) -> list[int]:
     """convert sdk token ids into a plain list of integers
-        had l function ghadi tkhli l code ykhdam swa sdk rja3 
+        had l function ghadi tkhli l code ykhdam swa sdk rja3
         [1,2,3]
         wla [[1,2,3]]
     """
@@ -43,7 +42,7 @@ def decode_token_ids(model: Small_LLM_Model, token_ids: list[int]) -> str:
     """decode token ids back into text using the sdk"""
 
     try:
-        return model.decode(token_ids)
+        return cast(str, model.decode(token_ids))
     except Exception as exc:
         raise RuntimeError(f"could not decode token ids: {exc}") from exc
 
@@ -58,7 +57,10 @@ def get_next_logits(
         raise ValueError("input_ids must not be empty")
 
     try:
-        logits = model.get_logits_from_input_ids(input_ids)
+        logits = cast(
+            list[float],
+            model.get_logits_from_input_ids(input_ids),
+        )
     except Exception as exc:
         raise RuntimeError(f"could not get logits from model: {exc}") from exc
 

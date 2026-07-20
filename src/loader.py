@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from pydantic import TypeAdapter, ValidationError
 from src.models import FunctionDefinition, InputData, PromptItem
 
@@ -34,7 +34,7 @@ def load_prompts(path: str | Path) -> list[PromptItem]:
 
     try:
         adapter = TypeAdapter(list[PromptItem])
-        return adapter.validate_python(raw_data)
+        return cast(list[PromptItem], adapter.validate_python(raw_data))
     except ValidationError as exc:
         raise ValueError(f"invalid prompts file schema : {exc}") from exc
 
@@ -46,7 +46,10 @@ def load_functions(path: str | Path) -> list[FunctionDefinition]:
 
     try:
         adapter = TypeAdapter(list[FunctionDefinition])
-        return adapter.validate_python(raw_data)
+        return cast(
+            list[FunctionDefinition],
+            adapter.validate_python(raw_data),
+        )
     except ValidationError as exc:
         raise ValueError(f"invalid functions file schema : {exc}") from exc
 

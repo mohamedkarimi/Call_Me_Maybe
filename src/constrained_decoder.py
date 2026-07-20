@@ -94,7 +94,10 @@ def constrained_decode(
             [[next_token_id]], device=model._device, dtype=torch.long)
         with torch.no_grad():
             outputs = model._model(
-                input_ids=next_input, past_key_values=past_key_values, use_cache=True)
+                input_ids=next_input,
+                past_key_values=past_key_values,
+                use_cache=True,
+            )
             past_key_values = outputs.past_key_values
             logits = outputs.logits[0, -1]
 
@@ -143,7 +146,9 @@ def is_json_object_prefix(text: str) -> bool:
 
 
 def fix_json_escapes(text: str) -> str:
-    """Escapes invalid backslashes in a JSON string so json.loads doesn't fail."""
+    """Escapes invalid backslashes in a JSON
+    string so json.loads doesn't fail.
+    """
     result = []
     i = 0
     n = len(text)
@@ -157,7 +162,13 @@ def fix_json_escapes(text: str) -> str:
                     i += 2
                     continue
                 elif next_char == 'u':
-                    if i + 5 < n and all(c in '0123456789abcdefABCDEF' for c in text[i+2:i+6]):
+                    if (
+                        i + 5 < n
+                        and all(
+                            c in "0123456789abcdefABCDEF"
+                            for c in text[i + 2: i + 6]
+                        )
+                    ):
                         result.append('\\')
                         result.append('u')
                         result.extend(text[i+2:i+6])
