@@ -1,3 +1,9 @@
+from collections.abc import Callable
+import json
+import torch
+from src.llm_client import decode_token_ids, encode_text
+from llm_sdk.llm_sdk import Small_LLM_Model
+
 """3. مهم تفهم هاد النقطة
 
 فـ subject كيقولو الخطوات هكا:
@@ -17,63 +23,11 @@
 حتى نلقى token صحيح
 """
 """constrained token by token decoding utilities"""
-
-import json
-from collections.abc import Callable, Sequence
-import torch
-
-from llm_sdk.llm_sdk import Small_LLM_Model
-from src.llm_client import decode_token_ids, encode_text, get_next_logits
-
 PrefixValidator = Callable[[str], bool]
 """واش النص اللي تولد حتى دابا مازال ممكن يكمل ويولي صحيح؟"""
 StopValidator = Callable[[str], bool]
 """واش النص كمل وخصنا نوقفو؟"""
 
-def ordered_token_ids_by_score(logits: Sequence[float]) -> list[int]:
-    """order token ids from highest logit score to lowest"""
-
-    if not logits:
-        raise ValueError("cannot order empty logits")
-    
-    logits_tensor = torch.tensor(logits)
-    sorted_indices = torch.argsort(logits_tensor, descending=True)
-    sorted_list: list[int] = sorted_indices.tolist()
-    return sorted_list
-
-def find_best_valid_token(
-        model: Small_LLM_Model,
-        context_ids: list[int],
-        generated_ids: list[int],
-        prefix_validator: PrefixValidator,
-        max_candidates: int | None = None,
-) -> int:
-    """find the highest scoring token that keeps the output valid"""
-    
-    """جيب logits
-    رتب tokens
-    جرب token ب token
-    decode candidate
-    شوف واش candidate valid prefix
-    إلا valid رجع token_id
-    إلا كلشي غلط raise error
-    """
-
-    logits_list = get_next_logits(model, context_ids)
-    logits_tensor = torch.tensor(logits_list)
-    sorted_indices = torch.argsort(logits_tensor, descending=True)
-    
-    max_candidates_val = max_candidates if max_candidates is not None else 100
-    token_ids: list[int] = sorted_indices[:max_candidates_val].tolist()
-    
-    for token_id in token_ids:
-        candidate_ids = generated_ids + [token_id]
-        candidate_text = decode_token_ids(model, candidate_ids)
-
-        if prefix_validator(candidate_text):
-            return token_id
-    
-    raise RuntimeError("no valid next token found during constrained decoding")
 
 def constrained_decode(
         model: Small_LLM_Model,
@@ -86,8 +40,9 @@ def constrained_decode(
 ) -> str:
     """generate txte while respecting a prefix constraint"""
     prompt_ids = encode_text(model, prompt)
-    
-    # Optional smart pre-filling of JSON prefix structure to bypass prompt/key generation redundancy
+
+    # Optional smart pre-filling of JSON prefix
+    # structure to bypass prompt/key generation redundancy
     if user_prompt is not None:
         prefix = f'{{\n  "prompt": {json.dumps(user_prompt)},\n  "name": "'
         prefilled_ids = encode_text(model, prefix)
@@ -97,43 +52,49 @@ def constrained_decode(
         generated_ids = []
         full_input_ids = prompt_ids
 
-    # Run the first model pass over the full initial context (including prefilled prefix if present)
-    input_tensor = torch.tensor([full_input_ids], device=model._device, dtype=torch.long)
+    # Run the first model pass over the full
+    # initial context (including prefilled prefix if present)
+    input_tensor = torch.tensor(
+        [full_input_ids], device=model._device, dtype=torch.long)
     with torch.no_grad():
         outputs = model._model(input_ids=input_tensor, use_cache=True)
         past_key_values = outputs.past_key_values
         logits = outputs.logits[0, -1]
-        
+
     max_candidates_val = max_candidates if max_candidates is not None else 100
 
     for _step in range(max_new_tokens):
         # Retrieve the sorted candidate token ids using fast PyTorch sorting
         sorted_indices = torch.argsort(logits, descending=True)
         token_ids = sorted_indices[:max_candidates_val].tolist()
-        
+
         found = False
         next_token_id = -1
         for token_id in token_ids:
             candidate_ids = generated_ids + [token_id]
             candidate_text = decode_token_ids(model, candidate_ids)
-            
+
             if prefix_validator(candidate_text):
                 next_token_id = token_id
                 generated_ids.append(token_id)
                 found = True
                 break
-                
+
         if not found:
-            raise RuntimeError("no valid next token found during constrained decoding")
-            
+            raise RuntimeError(
+                "no valid next token found during constrained decoding")
+
         generated_text = decode_token_ids(model, generated_ids)
         if stop_validator(generated_text):
             return generated_text
-            
-        # Get logits for next token using KV cache to process only the single new token
-        next_input = torch.tensor([[next_token_id]], device=model._device, dtype=torch.long)
+
+        # Get logits for next token using KV cache
+        # to process only the single new token
+        next_input = torch.tensor(
+            [[next_token_id]], device=model._device, dtype=torch.long)
         with torch.no_grad():
-            outputs = model._model(input_ids=next_input, past_key_values=past_key_values, use_cache=True)
+            outputs = model._model(
+                input_ids=next_input, past_key_values=past_key_values, use_cache=True)
             past_key_values = outputs.past_key_values
             logits = outputs.logits[0, -1]
 
@@ -147,13 +108,13 @@ def is_json_object_prefix(text: str) -> bool:
 
     if not stripped:
         return True
-    
+
     if not stripped.startswith("{"):
         return False
-    
-    stack: list[str] = []
-    in_string = False
-    escaped = False
+
+    stack: list[str] = []  # باش نتبعو:{}
+    in_string = False  # واش دابا داخل "string" ؟
+    escaped = False  # \"
 
     for character in stripped:
         if in_string:
@@ -172,13 +133,14 @@ def is_json_object_prefix(text: str) -> bool:
         elif character in "}]":
             if not stack:
                 return False
-            
+
             opening = stack.pop()
             if opening == "{" and character != "}":
                 return False
             if opening == "[" and character != "]":
                 return False
     return True
+
 
 def fix_json_escapes(text: str) -> str:
     """Escapes invalid backslashes in a JSON string so json.loads doesn't fail."""
@@ -208,13 +170,12 @@ def fix_json_escapes(text: str) -> str:
             i += 1
     return "".join(result)
 
+
 def is_complete_json_object(text: str) -> bool:
     """check whether text is a complet json object"""
     try:
         decoded = json.loads(fix_json_escapes(text))
     except json.JSONDecodeError:
         return False
-    
-    return isinstance(decoded, dict)
 
-    
+    return isinstance(decoded, dict)

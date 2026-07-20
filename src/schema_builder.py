@@ -5,6 +5,7 @@ from src.models import FunctionDefinition, jsonType, StrictModel
 
 OUTPUT_KEYS: tuple[str, str, str] = ("prompt", "name", "parameters")
 
+
 class FunctionCallSchema(StrictModel):
     """represent constraints for function call generation"""
 
@@ -12,6 +13,7 @@ class FunctionCallSchema(StrictModel):
     function_names: list[str]
     parameters_by_function: dict[str, dict[str, jsonType]]
     returns_by_function: dict[str, jsonType]
+
 
 def extract_parameter_types(
         function: FunctionDefinition,
@@ -31,6 +33,7 @@ def extract_parameter_types(
         parameter_types[name] = definition.type
     return parameter_types
 
+
 def build_function_call_schema(
         functions: Sequence[FunctionDefinition],
 ) -> FunctionCallSchema:
@@ -49,17 +52,20 @@ def build_function_call_schema(
         """
         if function.name in parameters_by_function:
             raise ValueError(f"duplicate function name: {function.name}")
-        
+
         function_names.append(function.name)
-        parameters_by_function[function.name] = extract_parameter_types(function)
+        parameters_by_function[function.name] = extract_parameter_types(
+            function)
         returns_by_function[function.name] = function.returns.type
-    
+
     return FunctionCallSchema(
         output_keys=list(OUTPUT_KEYS),
         function_names=function_names,
         parameters_by_function=parameters_by_function,
         returns_by_function=returns_by_function,
     )
+
+
 def validate_function_name(
         schema: FunctionCallSchema,
         function_name: str,
@@ -70,6 +76,7 @@ def validate_function_name(
 
     return function_name in schema.parameters_by_function
 
+
 def is_value_matching_json_type(
         value: object,
         expected_type: jsonType,
@@ -78,23 +85,24 @@ def is_value_matching_json_type(
 
     if expected_type == "string":
         return isinstance(value, str)
-    
+
     if expected_type == "number":
         return isinstance(value, (int, float)) and not isinstance(value, bool)
-    
+
     if expected_type == "integer":
         return isinstance(value, int) and not isinstance(value, bool)
-    
+
     if expected_type == "boolean":
         return isinstance(value, bool)
-    
+
     if expected_type == "object":
         return isinstance(value, dict)
-    
+
     if expected_type == "array":
         return isinstance(value, list)
-    
+
     return False
+
 
 def validate_parameters(
         schema: FunctionCallSchema,
@@ -104,17 +112,17 @@ def validate_parameters(
     """validate parameters against the schema of a function
         واش parameters اللي خرجهم LLM صحيحين بالنسبة لهاد function؟
     """
-    
+
     if not validate_function_name(schema, function_name):
         return False
-    
+
     expected_parameters = schema.parameters_by_function[function_name]
 
     if set(parameters) != set(expected_parameters):
         return False
-    
+
     for name, expected_type in expected_parameters.items():
         if not is_value_matching_json_type(parameters[name], expected_type):
             return False
-        
+
     return True

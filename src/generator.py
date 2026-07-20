@@ -20,6 +20,7 @@ from src.schema_builder import (
     validate_parameters,
 )
 
+
 def parse_generated_json(text: str) -> dict[str, object]:
     """parse generated json text"""
 
@@ -27,11 +28,12 @@ def parse_generated_json(text: str) -> dict[str, object]:
         data = json.loads(fix_json_escapes(text))
     except json.JSONDecodeError as exc:
         raise ValueError("generated text is not valid json") from exc
-    
+
     if not isinstance(data, dict):
         raise ValueError("generated json root must be an object")
-    
+
     return data
+
 
 def validate_generated_object(
         schema: FunctionCallSchema,
@@ -43,22 +45,23 @@ def validate_generated_object(
 
     if set(generated) != required_keys:
         raise ValueError("generated object has invalid keys")
-    
+
     function_name = generated["name"]
     parameters = generated["parameters"]
 
     if not isinstance(function_name, str):
         raise ValueError("function name must be a string")
-    
+
     if not isinstance(parameters, dict):
         raise ValueError("parameters must be an object")
-    
+
     if not validate_function_name(schema, function_name):
         raise ValueError(f"unknown function name: {function_name}")
-    
+
     if not validate_parameters(schema, function_name, parameters):
         raise ValueError("generated parameters do not match schema")
-    
+
+
 def generate_function_call(
         model: Small_LLM_Model,
         prompt: str,
@@ -84,14 +87,15 @@ def generate_function_call(
     )
 
     generated_object = parse_generated_json(generated_text)
-    
+
     generated_object["prompt"] = prompt
-    
+
     function_name = generated_object.get("name")
     parameters = generated_object.get("parameters")
 
     if isinstance(function_name, str) and isinstance(parameters, dict):
-        expected_parameters = schema.parameters_by_function.get(function_name, {})
+        expected_parameters = schema.parameters_by_function.get(
+            function_name, {})
 
         for param_name, param_type in expected_parameters.items():
             if (
@@ -100,9 +104,6 @@ def generate_function_call(
                 and isinstance(parameters[param_name], int)
             ):
                 parameters[param_name] = float(parameters[param_name])
-    
-    # print("RAW GENERATED:")
-    # print(json.dumps(generated_object, indent=2))
 
     validate_generated_object(schema, generated_object)
 

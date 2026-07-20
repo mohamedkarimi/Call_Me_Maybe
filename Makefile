@@ -1,9 +1,9 @@
-UV := $(shell which uv 2>/dev/null || ( [ -f /home/karimi/snap/code/247/.local/bin/uv ] && echo /home/karimi/snap/code/247/.local/bin/uv || echo uv ))
+UV := uv
 
-.PHONY: install run debug clean lint
+.PHONY: install run debug clean lint lint-strict
 
 install:
-	$(UV) sync
+	export UV_CACHE_DIR=/goinfre/mokarimi/.uv-cache && $(UV) sync
 
 run:
 	$(UV) run python -m src
@@ -13,8 +13,18 @@ debug:
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
-	rm -rf .mypy_cache .pytest_cache
+	rm -rf .mypy_cache
+	rm -rf .pytest_cache
 
 lint:
 	$(UV) run flake8 .
-	$(UV) run mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+	$(UV) run mypy . \
+		--warn-return-any \
+		--warn-unused-ignores \
+		--ignore-missing-imports \
+		--disallow-untyped-defs \
+		--check-untyped-defs
+
+lint-strict:
+	$(UV) run flake8 .
+	$(UV) run mypy . --strict

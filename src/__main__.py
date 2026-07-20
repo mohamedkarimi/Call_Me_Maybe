@@ -1,4 +1,3 @@
-"""command line entry point for the call me maybe project"""
 import argparse
 from pathlib import Path
 
@@ -41,6 +40,7 @@ def parse_args() -> argparse.Namespace:
 
     return parser.parse_args()
 
+
 def main() -> int:
     """run the command line program
     return:
@@ -56,18 +56,18 @@ def main() -> int:
     except ValueError as exc:
         print(f"Error: {exc}")
         return 1
-    
+
     print("loading model...")
     model = Small_LLM_Model()
-    
+
     results = []
     print()
     print("starting generation...")
     print("-" * 40)
-    
+
     for test_case in input_data.prompts:
         print(f"processing prompt: {test_case.prompt}")
-        
+
         try:
             result = generate_function_call(
                 model=model,
@@ -78,14 +78,14 @@ def main() -> int:
             print(f"generation failed: {exc}")
             print()
             continue
-        
+
         results.append(result)
-    
+
     output_path = write_results(
         output_path=args.output,
         results=results,
     )
-    
+
     print()
     print("generation completed successfully")
     print(f"generated results: {len(results)}")
@@ -93,5 +93,10 @@ def main() -> int:
 
     return 0
 
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        print("\nGeneration interrupted by user.")
+        raise SystemExit(0)

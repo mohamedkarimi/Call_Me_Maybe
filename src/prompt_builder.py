@@ -3,15 +3,17 @@ from collections.abc import Sequence
 
 from src.models import FunctionDefinition, TypeDefinition
 
+
 def format_parameters(parameters: dict[str, TypeDefinition]) -> str:
-    """fromat funcion parameters as a readable sifnature"""
+    """fromat funcion parameters as a readable signature"""
 
     formatted_parameters: list[str] = []
 
     for name, definition in parameters.items():
         formatted_parameters.append(f"{name}: {definition.type}")
-    
+
     return ", ".join(formatted_parameters)
+
 
 def format_function_definition(function: FunctionDefinition) -> str:
     """format one function definition for the prompt"""
@@ -22,6 +24,7 @@ def format_function_definition(function: FunctionDefinition) -> str:
         f"- {function.name}({parameters}) -> {function.returns.type}: "
         f"{function.description}"
     )
+
 
 def build_generation_prompt(
         user_prompt: str,

@@ -19,14 +19,15 @@ def normalize_token_ids(raw_ids: object) -> list[int]:
         if len(raw_ids) == 1 and isinstance(raw_ids[0], list):
             return [int(token_id) for token_id in raw_ids[0]]
         return [int(token_id) for token_id in raw_ids]
-    
+
     raw_ids_any = cast(Any, raw_ids)
 
     if hasattr(raw_ids_any, "tolist"):
         values = raw_ids_any.tolist()
         return normalize_token_ids(values)
-    
+
     raise TypeError("unsupported token id format returned by the sdk")
+
 
 def encode_text(model: Small_LLM_Model, text: str) -> list[int]:
     """encode text into token ids using the sdk"""
@@ -36,7 +37,8 @@ def encode_text(model: Small_LLM_Model, text: str) -> list[int]:
         return normalize_token_ids(raw_ids)
     except Exception as exc:
         raise RuntimeError(f"could not encode text: {exc}") from exc
-    
+
+
 def decode_token_ids(model: Small_LLM_Model, token_ids: list[int]) -> str:
     """decode token ids back into text using the sdk"""
 
@@ -44,7 +46,8 @@ def decode_token_ids(model: Small_LLM_Model, token_ids: list[int]) -> str:
         return model.decode(token_ids)
     except Exception as exc:
         raise RuntimeError(f"could not decode token ids: {exc}") from exc
-    
+
+
 def get_next_logits(
         model: Small_LLM_Model,
         input_ids: list[int],
@@ -53,13 +56,13 @@ def get_next_logits(
 
     if not input_ids:
         raise ValueError("input_ids must not be empty")
-    
+
     try:
         logits = model.get_logits_from_input_ids(input_ids)
     except Exception as exc:
         raise RuntimeError(f"could not get logits from model: {exc}") from exc
-    
+
     if not logits:
         raise RuntimeError("model returned an empty logits list")
-    
+
     return logits
