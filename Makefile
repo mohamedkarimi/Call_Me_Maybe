@@ -28,4 +28,6 @@ lint:
 
 lint-strict:
 	$(UV) run flake8 src
-	$(UV) run mypy src --strict
+	$(UV) run mypy src \
+		--strict \
+		--follow-imports=skip

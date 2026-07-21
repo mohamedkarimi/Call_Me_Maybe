@@ -2,12 +2,11 @@
 
 import json
 from pathlib import Path
-from typing import Any, cast
 from pydantic import TypeAdapter, ValidationError
 from src.models import FunctionDefinition, InputData, PromptItem
 
 
-def read_json_file(path: str | Path) -> Any:
+def read_json_file(path: str | Path) -> object:
     """Read a json file and return its decoded content"""
 
     file_path = Path(path)
@@ -34,7 +33,8 @@ def load_prompts(path: str | Path) -> list[PromptItem]:
 
     try:
         adapter = TypeAdapter(list[PromptItem])
-        return cast(list[PromptItem], adapter.validate_python(raw_data))
+        prompts: list[PromptItem] = adapter.validate_python(raw_data)
+        return prompts
     except ValidationError as exc:
         raise ValueError(f"invalid prompts file schema : {exc}") from exc
 
@@ -46,10 +46,8 @@ def load_functions(path: str | Path) -> list[FunctionDefinition]:
 
     try:
         adapter = TypeAdapter(list[FunctionDefinition])
-        return cast(
-            list[FunctionDefinition],
-            adapter.validate_python(raw_data),
-        )
+        functions: list[FunctionDefinition] = adapter.validate_python(raw_data)
+        return functions
     except ValidationError as exc:
         raise ValueError(f"invalid functions file schema : {exc}") from exc
 

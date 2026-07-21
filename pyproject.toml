@@ -17,3 +17,6 @@ dev = [
     "flake8",
     "mypy",
 ]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]

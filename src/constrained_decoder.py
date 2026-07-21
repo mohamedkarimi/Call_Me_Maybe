@@ -4,24 +4,6 @@ import torch
 from src.llm_client import decode_token_ids, encode_text
 from llm_sdk.llm_sdk import Small_LLM_Model
 
-"""3. مهم تفهم هاد النقطة
-
-فـ subject كيقولو الخطوات هكا:
-
-1. model produces logits
-2. نحددو valid tokens
-3. invalid tokens كنعتابروهم -infinity
-4. كنختارو غير من valid tokens
-
-حنا فالكود ما غاديش نبدلو logits فعلياً لـ -inf.
-غادي نديرو نفس الفكرة بطريقة سهلة:
-
-نرتبو tokens من الأحسن للأسوأ حسب logits
-نجرب token الأول
-إلا كان كيخلي output valid → ناخدوه
-إلا كان غلط → نجرب اللي من بعدو
-حتى نلقى token صحيح
-"""
 """constrained token by token decoding utilities"""
 PrefixValidator = Callable[[str], bool]
 """واش النص اللي تولد حتى دابا مازال ممكن يكمل ويولي صحيح؟"""
