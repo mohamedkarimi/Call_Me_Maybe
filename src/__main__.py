@@ -79,6 +79,11 @@ def main() -> int:
             print(f"generation failed: {exc}")
             print()
             continue
+        
+        if result is None:
+            print(f"No matching function for: {test_case.prompt}")
+            print()
+            continue
 
         results.append(result)
 

@@ -46,7 +46,7 @@ def validate_generated_object(
     if set(generated) != required_keys:
         raise ValueError("generated object has invalid keys")
 
-    function_name = generated["name"]
+    function_name = generated["name"]   
     parameters = generated["parameters"]
 
     if not isinstance(function_name, str):
@@ -67,7 +67,7 @@ def generate_function_call(
         prompt: str,
         functions: list[FunctionDefinition],
         max_new_tokens: int = 256,
-) -> FunctionCallResult:
+) -> FunctionCallResult | None:
     """generate a validated function call for a prompt"""
 
     schema = build_function_call_schema(functions)
@@ -91,6 +91,8 @@ def generate_function_call(
     generated_object["prompt"] = prompt
 
     function_name = generated_object.get("name")
+    if function_name == "fn_none":
+        return None
     parameters = generated_object.get("parameters")
 
     if isinstance(function_name, str) and isinstance(parameters, dict):

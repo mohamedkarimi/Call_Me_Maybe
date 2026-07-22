@@ -42,7 +42,7 @@ def build_generation_prompt(
 Your task is to translate the user request into a function call.
 
 Available functions:
-{formatted_functions}
+{formatted_functions + "\nfn_none"}
 
 Rules:
 - Choose exactly one function from the available functions.
