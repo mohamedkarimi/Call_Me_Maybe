@@ -6,9 +6,8 @@ from llm_sdk.llm_sdk import Small_LLM_Model
 
 """constrained token by token decoding utilities"""
 PrefixValidator = Callable[[str], bool]
-"""واش النص اللي تولد حتى دابا مازال ممكن يكمل ويولي صحيح؟"""
+"""wach text l generata mazal momkin ykmal o ywli shih"""
 StopValidator = Callable[[str], bool]
-"""واش النص كمل وخصنا نوقفو؟"""
 
 
 def constrained_decode(
@@ -22,17 +21,8 @@ def constrained_decode(
 ) -> str:
     """generate txte while respecting a prefix constraint"""
     prompt_ids = encode_text(model, prompt)
-
-    # Optional smart pre-filling of JSON prefix
-    # structure to bypass prompt/key generation redundancy
-    if user_prompt is not None:
-        prefix = f'{{\n  "prompt": {json.dumps(user_prompt)},\n  "name": "'
-        prefilled_ids = encode_text(model, prefix)
-        generated_ids = list(prefilled_ids)
-        full_input_ids = prompt_ids + prefilled_ids
-    else:
-        generated_ids = []
-        full_input_ids = prompt_ids
+    generated_ids: list[int] = []
+    full_input_ids = prompt_ids
 
     # Run the first model pass over the full
     # initial context (including prefilled prefix if present)
@@ -97,10 +87,9 @@ def is_json_object_prefix(text: str) -> bool:
     if not stripped.startswith("{"):
         return False
 
-    stack: list[str] = []  # باش نتبعو:{}
-    in_string = False  # واش دابا داخل "string" ؟
-    escaped = False  # \"
-
+    stack: list[str] = []
+    in_string = False
+    escaped = False
     for character in stripped:
         if in_string:
             if escaped:

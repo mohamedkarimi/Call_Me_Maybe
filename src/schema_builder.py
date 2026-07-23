@@ -68,9 +68,7 @@ def validate_function_name(
         schema: FunctionCallSchema,
         function_name: str,
 ) -> bool:
-    """check whther a function name exists in the schema
-        واش هاد function name موجودة ف schema؟
-    """
+    """check whther a function name exists in the schema"""
 
     return function_name in schema.parameters_by_function
 
@@ -107,9 +105,7 @@ def validate_parameters(
         function_name: str,
         parameters: dict[str, object],
 ) -> bool:
-    """validate parameters against the schema of a function
-        واش parameters اللي خرجهم LLM صحيحين بالنسبة لهاد function؟
-    """
+    """validate parameters against the schema of a function"""
 
     if not validate_function_name(schema, function_name):
         return False

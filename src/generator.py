@@ -46,7 +46,7 @@ def validate_generated_object(
     if set(generated) != required_keys:
         raise ValueError("generated object has invalid keys")
 
-    function_name = generated["name"]   
+    function_name = generated["name"]
     parameters = generated["parameters"]
 
     if not isinstance(function_name, str):

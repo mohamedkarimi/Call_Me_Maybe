@@ -6,7 +6,7 @@ install:
 	$(UV) sync
 
 run:
-	$(UV) run python -m src
+	time $(UV) run python -m src
 
 debug:
 	$(UV) run python -m pdb -m src

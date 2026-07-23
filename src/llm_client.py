@@ -45,26 +45,3 @@ def decode_token_ids(model: Small_LLM_Model, token_ids: list[int]) -> str:
         return cast(str, model.decode(token_ids))
     except Exception as exc:
         raise RuntimeError(f"could not decode token ids: {exc}") from exc
-
-
-def get_next_logits(
-        model: Small_LLM_Model,
-        input_ids: list[int],
-) -> list[float]:
-    """get raw next token logits from the sdk"""
-
-    if not input_ids:
-        raise ValueError("input_ids must not be empty")
-
-    try:
-        logits = cast(
-            list[float],
-            model.get_logits_from_input_ids(input_ids),
-        )
-    except Exception as exc:
-        raise RuntimeError(f"could not get logits from model: {exc}") from exc
-
-    if not logits:
-        raise RuntimeError("model returned an empty logits list")
-
-    return logits
