@@ -24,8 +24,7 @@ def constrained_decode(
     generated_ids: list[int] = []
     full_input_ids = prompt_ids
 
-    # Run the first model pass over the full
-    # initial context (including prefilled prefix if present)
+
     input_tensor = torch.tensor(
         [full_input_ids], device=model._device, dtype=torch.long)
     with torch.no_grad():
@@ -36,7 +35,6 @@ def constrained_decode(
     max_candidates_val = max_candidates if max_candidates is not None else 100
 
     for _step in range(max_new_tokens):
-        # Retrieve the sorted candidate token ids using fast PyTorch sorting
         sorted_indices = torch.argsort(logits, descending=True)
         token_ids = sorted_indices[:max_candidates_val].tolist()
 
